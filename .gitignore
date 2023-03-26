@@ -1,0 +1,8 @@
+venv
+db.sqlite3
+books/__pycache__/
+../.idea/
+back/books/__pycache__/
+.idea/
+test.py
+.vscode
