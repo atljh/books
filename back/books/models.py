@@ -1,9 +1,52 @@
 from django.db import models
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
 import utils.choices as choice
+from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.base_user import BaseUserManager
+from django.utils.translation import gettext_lazy as _
+
 from decimal import Decimal, getcontext
 getcontext().prec = 2
 
+
+class UserManager(BaseUserManager):
+    use_in_migrations = True
+
+    def _create_user(self, email, password, **extra_fields):
+        if not email:
+            raise ValueError('Users require an email field')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_superuser', False)
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email, password, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self._create_user(email, password, **extra_fields)
+
+
+class User(AbstractUser):
+    username = None
+    email = models.EmailField(_('email address'), unique=True)
+
+    objects = UserManager()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name']
+    
 
 class Profile(models.Model):
     photo = models.ImageField(upload_to="photos/users/", null=True, blank=True)
@@ -16,7 +59,7 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, related_name='profile')
 
     def __str__(self):
-        return self.user.username
+        return self.user.email
 
     # def save(self, *args, **kwargs):
     #     'some actions'
@@ -37,7 +80,7 @@ class Settings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='settings')
 
     def __str__(self):
-        return f"{self.user.username.capitalize()}'s settings"
+        return f"{self.user.email.capitalize()}'s settings"
 
 
 class Message(models.Model):
@@ -61,13 +104,10 @@ class AdminMessage(models.Model):
     msg_type = models.CharField(default='question', choices=choice.TYPE_MSG, max_length=40)
 
     def __str__(self):
-        return f'{self.user.username} | {self.time}'
+        return f'{self.user.email} | {self.time}'
 
     class Meta:
         ordering = ['time']
-
-
-# class Ticket(models.Model):
 
 
 
@@ -102,7 +142,7 @@ class Statistic(models.Model):
     user = models.OneToOneField(User, related_name="statistic", on_delete=models.CASCADE)
 
     def __str__(self):
-        return f'{self.user.username}`s stat'
+        return f'{self.user.email}`s stat'
 
 
 class Fund(models.Model):
@@ -158,7 +198,7 @@ class Book(models.Model):
     description = models.TextField()
     original_language = models.CharField(max_length=40, choices=choice.LANGUAGE_CHOICES)
     type_book = models.CharField(max_length=40, choices=choice.TYPE_BOOK_CHOICES)
-    age_restrictions = models.BooleanField(default=False)
+    age_restrictions = models.BooleanField('Обмеження за вiком 18+', default=False)
     is_ready = models.BooleanField(default=False)
     fund = models.ForeignKey(Fund, on_delete=models.DO_NOTHING, related_name='books')
     created = models.DateField(auto_now=True)

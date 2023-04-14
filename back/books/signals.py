@@ -7,6 +7,7 @@ from books.models import *
 from utils.choices import tr_types
 
 
+
 @receiver(post_save, sender=User)
 def new_profile(sender, instance, created, **kwargs):
     if created:

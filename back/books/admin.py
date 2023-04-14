@@ -13,7 +13,12 @@ class WriterAdmin(admin.ModelAdmin):
 
 @admin.register(m.Profile)
 class WriterAdmin(admin.ModelAdmin):
-    search_fields = ['user__username']
+    search_fields = ['user__email']
+
+
+@admin.register(m.User)
+class BookAdmin(admin.ModelAdmin):
+    search_fields = ['user__email']
 
 
 @admin.register(m.Book)

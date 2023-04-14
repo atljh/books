@@ -5,10 +5,11 @@ from rest_framework import serializers, generics
 import books.models as mod
 from datetime import date
 
+
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'username', 'email', 'groups']
+        fields = ['url', 'email', 'groups']
 
 
 # class ProfileSerializer(serializers.ModelSerializer):
@@ -21,9 +22,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 #         # view_name="books",
 #         read_only=True
 #     )
-#
+
 #     class Meta:
-#         model = mod.Writer
+#         # model = mod.Writer
 #         fields = "__all__"
 
 
@@ -106,8 +107,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = mod.Profile
-        # fields = '__all__'
-        fields = ['user', 'photo']
+        fields = '__all__'
+        # fields = ['user', 'photo']
 
         # exclude = ['photo']
 
@@ -189,11 +190,9 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # customize the serialized data here
-        data['receiver'] = instance.receiver.username
-        data['sender'] = instance.sender.username
+        data['recipient'] = instance.recipient.pk
+        data['sender'] = instance.sender.pk
         return data
-
 
 class AdminMessageSerializer(serializers.ModelSerializer):
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())

@@ -17,6 +17,7 @@ router.register(r'subscriptions', v.SubscriptionAPIVewset, basename='subscriptio
 urlpatterns = [
     path('me/', v.show_profile),
     path('like/', v.LikedBookAPIView.as_view()),
+    path('book_likes/<int:pk>', v.book_likes),
     path('statistic/', v.get_statistic),
     path('settings/', v.SettingsAPIView.as_view(), name='settings'),
     path('transactions/', v.TransactionAPIView.as_view(), name='transactions'),
@@ -27,6 +28,8 @@ urlpatterns = [
 
     path('tags/', v.TagAPIView.as_view()),
 
+    path('accounts/activate/<uid>/<token>', v.ActivateUser.as_view({'get': 'activation'}), name='activation'),
+    path('accounts/password/reset/confirm/<uid>/<token>', v.ResetPassword.as_view({'get': 'reset_password'}), name='reset_password'),
 
     path('profiles/', v.ProfileAPIViewSet.as_view({'get': 'list'})),
     path('profiles/<int:pk>', v.ProfileAPIViewSet.as_view({'get': 'retrieve'}), name='profile'),
@@ -41,6 +44,7 @@ urlpatterns = [
     path('discount/<int:pk>', v.DiscountAPIView.as_view()),
 
     path('mail/', v.MessageAPIView.as_view()),
+    path('mail/<int:pk>', v.dialog),
     path('mail-admin/', v.AdminMessageAPIView.as_view()),
     path('notifications/', v.NotificationAPIView.as_view()),
     path('notifications/<int:pk>', v.one_notification),

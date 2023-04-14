@@ -5,13 +5,14 @@ from pprint import pprint
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User, Group
 from django.http import HttpResponse
 from django.views.generic import FormView
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
+from djoser.views import UserViewSet
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiExample, extend_schema_view, OpenApiParameter
 from notifications.models import Notification
@@ -29,6 +30,8 @@ from utils.change_balance import buy_book, buy_chapters
 import utils.filters as f
 from utils.choices import TransactionType
 
+import requests
+
 err = {'status': 'err', 'desc': ''}
 
 
@@ -40,6 +43,36 @@ def show_profile(request):
     data['commission'] = profile.commission
     data['books'] = books_data
     return Response(data)
+
+
+@api_view(['GET'])
+def book_likes(request, pk):
+    likes = mod.Book.objects.filter(pk=pk).annotate(num_likes=Count('likes')).values('num_likes')
+    return Response(likes[0]['num_likes'])
+
+
+
+class ActivateUser(UserViewSet):
+    def get_serializer(self, *args, **kwargs):
+        serializer_class = self.get_serializer_class()
+        kwargs.setdefault('context', self.get_serializer_context())
+ 
+        kwargs['data'] = {"uid": self.kwargs['uid'], "token": self.kwargs['token']}
+ 
+        return serializer_class(*args, **kwargs)
+ 
+    def activation(self, request, uid, token, *args, **kwargs):
+        super().activation(request, *args, **kwargs)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+
+class ResetPassword(UserViewSet):
+    def reset_password(self, request, *args, **kwargs):
+        data = {"uid": self.kwargs['uid'], "token": self.kwargs['token']}
+        return Response(status=status.HTTP_204_NO_CONTENT, data=data)
+
+
 
 
 class AddChapterAPiView(generics.CreateAPIView):
@@ -88,6 +121,7 @@ def get_statistic(request):
 
     responses={200: 'OK'},
 )
+
 @api_view(['GET', 'POST'])
 def add_comment(request):
     try:
@@ -143,7 +177,7 @@ class MessageAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         return mod.Message.objects.filter(
-            Q(sender=user) | Q(receiver=user)
+            Q(sender=user) | Q(recipient=user)
         )
 
 
@@ -168,7 +202,7 @@ class ProfileAPIViewSet(mixins.RetrieveModelMixin,
                             mixins.ListModelMixin,
                             viewsets.GenericViewSet):
     queryset = mod.Profile.objects.all()
-    # serializer_class = ser.ProfileSerializer
+    serializer_class = ser.ProfileSerializer
 
     def get_serializer_class(self):
         s = ser.ProfileSerializer
@@ -428,6 +462,17 @@ def one_notification(request, pk):
         return Response({"status": "err", "desc": str(err)})
 
 
+@api_view(['GET'])
+def dialog(request, pk):
+    try:
+        user = request.user
+        dialog =  mod.Message.objects.filter(
+            Q(sender=user) & Q(recipient=pk)
+        )
+        data = ser.MessageSerializer(dialog, many=True).data
+        return Response(data)
+    except Exception as err:
+        return Response({"status": "err", "desc": str(err)})
 
 
 def pay(request):

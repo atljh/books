@@ -38,7 +38,7 @@ def buy_book(consumer: Profile, book: Book) -> dict:
         price = book.discount.price
     else:
         price = book.price
-    if consumer.user.username == book.user.username:
+    if consumer.user.email == book.user.email:
         return {'status': 'err', 'desc': 'You can`t buy your own book!'}
 
     elif consumer.balance < price:
@@ -59,7 +59,7 @@ def buy_book(consumer: Profile, book: Book) -> dict:
 
         notify.send(consumer,
                     recipient=seller,
-                    verb=f'{consumer.user.username.capitalize()} тільки що придбав твою книгу - {book.title}')
+                    verb=f'{consumer.user.email.capitalize()} тільки що придбав твою книгу - {book.title}')
 
         return {'success': True}
 
@@ -68,17 +68,17 @@ def buy_book(consumer: Profile, book: Book) -> dict:
 @transaction.atomic
 def buy_chapters(consumer: Profile, chapters: list[Chapter]) -> dict:
     book = chapters[0].book
-    if consumer.user.username == book.user.username:
+    if consumer.user.email == book.user.email:
         return {'status': 'err', 'desc': 'You can`t buy your own chapter!'}
+    
     # if chapter.book.discount.active and chapter.book.discount.date_finish > date.today():
     #     price = book.discount.price
     # else:
     #     price = book.price
 
-    # if consumer.balance < price:
-    #     return {'status': 'err', 'desc': 'Insufficient funds'}
-        # if consumer.user in chapter.users_with_access.all():
-        #     return {'status': 'err', 'desc': 'You have bought this chapter already!'}
+
+    # if consumer.user in chapter.users_with_access.all():
+    #     return {'status': 'err', 'desc': 'You have bought this chapter already!'}
 
     bought_count = 0
     paid_chapters = [chapter for chapter in chapters if not chapter.is_free]
@@ -88,10 +88,13 @@ def buy_chapters(consumer: Profile, chapters: list[Chapter]) -> dict:
         if consumer.user not in chapter.users_with_access.all():
             chapter.users_with_access.add(consumer.user)
             bought_count += 1
+
     if bought_count == 0:
         return {'info': f"Nothing to buy, all chapters you already bought"}
+    
     price = None
     for sub in book.subs.all():
+        print(sub, sub.quantity)
         if sub.quantity <= bought_count:
             price = sub.price
             break
@@ -99,6 +102,9 @@ def buy_chapters(consumer: Profile, chapters: list[Chapter]) -> dict:
     if not price:
         price = book.price_chapter
 
+    if consumer.balance < price * bought_count:
+        return {'status': 'err', 'desc': 'Insufficient funds'}
+    
     seller = book.user
     earned = _update_balances(price, seller.profile, consumer, amount=bought_count)
     _update_statistic(seller, earned)
@@ -109,7 +115,7 @@ def buy_chapters(consumer: Profile, chapters: list[Chapter]) -> dict:
 
     notify.send(consumer,
                 recipient=seller,
-                verb=f'{consumer.user.username.capitalize()} купив глав - {bought_count}\n'
+                verb=f'{consumer.user.email.capitalize()} купив глав - {bought_count}\n '
                      f'Ти заробив: {earned}$')
 
     return {'success': f"You bought {bought_count} paid_chapters!",
